@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>设置 - GLaDOS 签到助手</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; line-height: 1.6; color: #333; }
+    .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; max-width: 450px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    h3 { margin-top: 0; color: #000; }
+    .info-text { font-size: 13px; color: #666; background: #f9f9f9; padding: 10px; border-radius: 4px; margin: 15px 0; }
+    .history { margin-top: 20px; font-size: 0.9em; border-top: 1px solid #eee; padding-top: 10px; }
+    input[type="number"] { width: 60px; padding: 4px; }
+    button { cursor: pointer; padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; background: #fff; }
+    #saveBtn { background: #28a745; color: white; border: none; }
+    #saveBtn:hover { background: #218838; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h3>签到设置</h3>
+    
+	<div>
+	  <label for="targetHour">设定签到时间： </label>
+	  <select id="targetHour">
+		<option value="0">00:00</option>
+		<option value="1">01:00</option>
+		<option value="2">02:00</option>
+		<option value="3">03:00</option>
+		<option value="4">04:00</option>
+		<option value="5">05:00</option>
+		<option value="6">06:00</option>
+		<option value="7">07:00</option>
+		<option value="8">08:00</option>
+		<option value="9" selected>09:00</option>
+		<option value="10">10:00</option>
+		<option value="11">11:00</option>
+		<option value="12">12:00</option>
+		<option value="13">13:00</option>
+		<option value="14">14:00</option>
+		<option value="15">15:00</option>
+		<option value="16">16:00</option>
+		<option value="17">17:00</option>
+		<option value="18">18:00</option>
+		<option value="19">19:00</option>
+		<option value="20">20:00</option>
+		<option value="21">21:00</option>
+		<option value="22">22:00</option>
+		<option value="23">23:00</option>
+	  </select>
+	</div>
+
+    <div class="info-text">
+      <p style="margin-top:0;"><b>💡 运行机制说明：</b></p>
+	  <p style="margin-top:0;"><b>💡 确保当前浏览器已登录 <a href="https://glados.space/console/checkin" target="_blank">https://glados.space</a></b></p>
+      <b>👉 浏览器持续开启时：</b><br>
+      模拟现实操作，签到将在设定时间的 60 分钟内随机触发。
+	  <br>例如：设定 9 点，程序将在 9:00~9:59 之间的随机时间执行。
+      <br><br>
+      <b>👉 开启浏览器自动补签：</b><br>
+      若启动浏览器时已错过设定时间，程序将立即尝试自动签到。
+    </div>
+
+    <div style="margin: 15px 0;">
+      <label>
+        <input type="checkbox" id="notifyToggle" checked> 开启桌面结果通知
+      </label>
+    </div>
+
+    <button id="saveBtn">保存设置</button>
+    <button id="testBtn" style="color: #007bff;">手动测试签到</button>
+    
+    <div class="history">
+      <h4>最近 30 次签到日志:</h4>
+      <ul id="historyList" style="padding-left: 20px;"></ul>
+    </div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

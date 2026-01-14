@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "GLaDOS 自动签到助手",
+  "version": "1.0",
+  "description": "每天自动完成 GLaDOS 签到。确保您在当前浏览器中已登录 https://glados.space/console/checkin （确保域名正确，否则会签到失败。）",
+  "permissions": [
+    "alarms",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://glados.space/*"
+  ],
+  "action": {
+    "default_title": "GLaDOS 签到助手"
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+	"16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
