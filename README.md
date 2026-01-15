@@ -21,15 +21,15 @@
 
 ## 🚀 安装说明
 
-### 方式一：开发者模式安装（手动）
+### 方式一：Chrome 商店安装（推荐）
+- [点击前往 Chrome Web Store 下载](https://chromewebstore.google.com/detail/bebkcollfclnaamapnjcaggfkgdfkail)
+- [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bebkcollfclnaamapnjcaggfkgdfkail.svg)](https://chromewebstore.google.com/detail/bebkcollfclnaamapnjcaggfkgdfkail)
+
+### 方式二：开发者模式安装（手动）
 1. 下载或克隆本仓库到本地。
 2. 打开 Chrome 浏览器，进入 `chrome://extensions/`。
 3. 开启右上角的 **“开发者模式”**。
 4. 点击 **“加载已解压的扩展程序”**，选择本仓库文件夹。
-
-### 方式二：Chrome 商店安装（待发布后更新链接）
-- [点击前往 Chrome Web Store 下载](https://chromewebstore.google.com/detail/bebkcollfclnaamapnjcaggfkgdfkail)
-- [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bebkcollfclnaamapnjcaggfkgdfkail.svg)](https://chromewebstore.google.com/detail/bebkcollfclnaamapnjcaggfkgdfkail)
 
 ## 🛠 使用方法
 
@@ -45,6 +45,10 @@
 - `background.js`: 后台常驻脚本，负责定时闹钟和签到逻辑。
 - `options.html/js`: 插件设置界面及历史记录展示。
 - `PRIVACY_POLICY.md`: 隐私政策说明。
+- `icon.png`: 程序图标文件。
+- `screenshot.jpg`: 预览截图。
+- `README.md`: 说明文档。
+- `LICENSE`: 协议文件。
 
 ## ⚖️ 许可协议
 本项目采用 [MIT License](LICENSE) 许可协议。仅供学习交流使用，请勿用于非法用途。
@@ -52,3 +56,4 @@
 ---
 
 *注：本工具与 GLaDOS 官方无任何隶属关系。*
+
