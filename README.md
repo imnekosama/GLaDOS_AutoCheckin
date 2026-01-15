@@ -3,6 +3,7 @@
 ![Version](https://img.shields.io/badge/version-1.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Chrome-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bebkcollfclnaamapnjcaggfkgdfkail.svg)](https://chromewebstore.google.com/detail/bebkcollfclnaamapnjcaggfkgdfkail)
 
 这是一个轻量级的 Chrome 浏览器扩展程序，旨在帮助用户每天自动完成 GLaDOS 平台的签到任务，节省手动操作时间，防止遗忘。
 
@@ -27,7 +28,8 @@
 4. 点击 **“加载已解压的扩展程序”**，选择本仓库文件夹。
 
 ### 方式二：Chrome 商店安装（待发布后更新链接）
-- [点击前往 Chrome Web Store 下载](https://imneko.com)
+- [点击前往 Chrome Web Store 下载](https://chromewebstore.google.com/detail/bebkcollfclnaamapnjcaggfkgdfkail)
+- [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bebkcollfclnaamapnjcaggfkgdfkail.svg)](https://chromewebstore.google.com/detail/bebkcollfclnaamapnjcaggfkgdfkail)
 
 ## 🛠 使用方法
 
@@ -48,4 +50,5 @@
 本项目采用 [MIT License](LICENSE) 许可协议。仅供学习交流使用，请勿用于非法用途。
 
 ---
+
 *注：本工具与 GLaDOS 官方无任何隶属关系。*
