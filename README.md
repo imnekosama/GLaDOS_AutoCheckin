@@ -1,6 +1,6 @@
 # GLaDOS 自动签到助手 (GLaDOS Checkin Helper)
 
-![Version](https://img.shields.io/badge/version-1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Chrome-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bebkcollfclnaamapnjcaggfkgdfkail.svg)](https://chromewebstore.google.com/detail/bebkcollfclnaamapnjcaggfkgdfkail)
@@ -56,4 +56,5 @@
 ---
 
 *注：本工具与 GLaDOS 官方无任何隶属关系。*
+
 
