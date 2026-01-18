@@ -1,7 +1,30 @@
 // 当插件安装或浏览器启动时，设置一个定时器
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("插件已安装，正在创建闹钟...");
-  // 创建一个每 1 小时检查一次的闹钟（为了确保在指定时段内能触发）
+  console.log("插件已安装，配置伪装规则...");
+  
+  // 【新增】配置伪装规则，解决 Origin 被拦截的问题
+  const RULES = [{
+    id: 1,
+    priority: 1,
+    action: {
+      type: 'modifyHeaders',
+      requestHeaders: [
+        { header: 'Origin', operation: 'set', value: 'https://glados.cloud' },
+        { header: 'Referer', operation: 'set', value: 'https://glados.cloud/console/checkin' }
+      ]
+    },
+    condition: {
+      urlFilter: 'glados.cloud/api/user/checkin',
+      resourceTypes: ['xmlhttprequest'] // fetch 在这里被视为 xmlhttprequest
+    }
+  }];
+
+  chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [1],
+    addRules: RULES
+  });
+
+  console.log("插件已安装，正在设置闹钟...");
   chrome.alarms.create("checkInAlarm", { periodInMinutes: 60 });
 });
 
@@ -30,16 +53,14 @@ async function tryCheckIn() {
 
 // 实际发送签到请求的函数
 function performFetch(today, notifyEnabled) {
-  fetch("https://glados.space/api/user/checkin", {
+  fetch("https://glados.cloud/api/user/checkin", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json;charset=UTF-8",
-      "Origin": "https://glados.space",
-      "Referer": "https://glados.space/console/checkin"
+      "Content-Type": "application/json;charset=UTF-8"
     },
     credentials: 'include', 
     body: JSON.stringify({ 
-      token: "glados.one" 
+      token: "glados.cloud" 
     })
   })
   .then(response => response.json())
