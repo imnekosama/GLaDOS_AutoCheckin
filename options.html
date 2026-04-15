@@ -4,76 +4,122 @@
   <meta charset="UTF-8">
   <title>设置 - GLaDOS 签到助手</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; line-height: 1.6; color: #333; }
-    .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; max-width: 450px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    h3 { margin-top: 0; color: #000; }
-    .info-text { font-size: 13px; color: #666; background: #f9f9f9; padding: 10px; border-radius: 4px; margin: 15px 0; }
-    .history { margin-top: 20px; font-size: 0.9em; border-top: 1px solid #eee; padding-top: 10px; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      padding: 20px; 
+      line-height: 1.6; 
+      font-size: 15px;
+      color: #000000; 
+      background-color: #333333; 
+    }
+    .card { 
+      border: 2px solid #efdcff; 
+      padding: 30px; 
+      border-radius: 12px; /* 让卡片外层也稍微圆润一点，与内部呼应 */
+      max-width: 650px; /* 宽度从 450px 增加到 650px，减少日志换行 */
+      background-color: #c4bdff; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+      margin: 40px auto; 
+    }
+    h3 { margin-top: 0; font-size: 1.2em; color: #000; text-align: center; }
+    
+    .info-text { 
+      font-size: 14px; 
+      color: #272727; 
+      background: #f9f9f9; 
+      padding: 15px; /* 稍微增加一点内边距，让文字不那么贴边 */
+      border-radius: 12px; /* 从 4px 改为 12px，边缘更加圆润柔和 */
+      margin: 15px 0; 
+    }
+
+    a:link {
+      color: #0f76eb;
+      text-decoration: none;
+    }
+    a:visited {
+      color: #d3084b;
+      text-decoration: none; 
+    }
+    a:hover {
+      color: #0f76eb;
+      text-decoration: underline;
+      /* font-weight: bold; */
+      text-shadow: 1px 1px 1px #94c6ff;
+    }
+    a:active {
+      color: #d3084b;
+    }
+    
+    .history { margin-top: 20px; font-size: 0.9em; border-top: 1px solid #dcc7f7; padding-top: 15px; }
+    #historyList { padding-left: 20px; line-height: 1.8; color: #2c3e50; }
     input[type="number"] { width: 60px; padding: 4px; }
-    button { cursor: pointer; padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; background: #fff; }
+    button { cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; background: #fff; transition: all 0.2s; } /* 给按钮加了一点动画过渡，提升质感 */
     #saveBtn { background: #28a745; color: white; border: none; }
     #saveBtn:hover { background: #218838; }
+    #testBtn:hover { background: #f0f8ff; } /* 鼠标悬停在测试按钮上的小效果 */
   </style>
 </head>
 <body>
   <div class="card">
-    <h3>签到设置(v1.2)</h3>
+    <h3>GLaDOS 自动签到设置 (v1.3)</h3>
     
-	<div>
-	  <label for="targetHour">设定签到时间： </label>
-	  <select id="targetHour">
-		<option value="0">00:00</option>
-		<option value="1">01:00</option>
-		<option value="2">02:00</option>
-		<option value="3">03:00</option>
-		<option value="4">04:00</option>
-		<option value="5">05:00</option>
-		<option value="6">06:00</option>
-		<option value="7">07:00</option>
-		<option value="8">08:00</option>
-		<option value="9" selected>09:00</option>
-		<option value="10">10:00</option>
-		<option value="11">11:00</option>
-		<option value="12">12:00</option>
-		<option value="13">13:00</option>
-		<option value="14">14:00</option>
-		<option value="15">15:00</option>
-		<option value="16">16:00</option>
-		<option value="17">17:00</option>
-		<option value="18">18:00</option>
-		<option value="19">19:00</option>
-		<option value="20">20:00</option>
-		<option value="21">21:00</option>
-		<option value="22">22:00</option>
-		<option value="23">23:00</option>
-	  </select>
-	</div>
+    <div>
+      <label for="targetHour">⏰ 设定签到时间： </label>
+      <select id="targetHour" style="padding: 4px; border-radius: 4px;">
+        <option value="0">00:00</option>
+        <option value="1">01:00</option>
+        <option value="2">02:00</option>
+        <option value="3">03:00</option>
+        <option value="4">04:00</option>
+        <option value="5">05:00</option>
+        <option value="6">06:00</option>
+        <option value="7">07:00</option>
+        <option value="8">08:00</option>
+        <option value="9" selected>09:00</option>
+        <option value="10">10:00</option>
+        <option value="11">11:00</option>
+        <option value="12">12:00</option>
+        <option value="13">13:00</option>
+        <option value="14">14:00</option>
+        <option value="15">15:00</option>
+        <option value="16">16:00</option>
+        <option value="17">17:00</option>
+        <option value="18">18:00</option>
+        <option value="19">19:00</option>
+        <option value="20">20:00</option>
+        <option value="21">21:00</option>
+        <option value="22">22:00</option>
+        <option value="23">23:00</option>
+      </select>
+    </div>
 
     <div class="info-text">
       <p style="margin-top:0;"><b>💡 运行机制说明：</b></p>
-	  <p style="margin-top:0;"><b>💡 确保当前浏览器已登录 <a href="https://glados.cloud/console/checkin" target="_blank" rel="noreferrer">https://glados.cloud</a></b></p>
+      <p style="margin-top:0;"><b>💡 确保当前浏览器已登录 <a href="https://glados.cloud/console/checkin" target="_blank" rel="noreferrer">https://glados.cloud</a></b></p>
       <b>👉 浏览器持续开启时：</b><br>
       模拟现实操作，签到将在设定时间的 60 分钟内随机触发。
-	  <br>例如：设定 9 点，程序将在 9:00~9:59 之间的随机时间执行。
+      <br>例如：设定 9 点，程序会在 9:00~9:59 之间的随机时间执行。
+      <br><br>注：如果电脑资源充沛且负载较低，程序会倾向于按精确周期触发。
+      <br>可以尝试取消“关闭浏览器后运行后台应用”来增加随机触发。
       <br><br>
-      <b>👉 开启浏览器自动补签：</b><br>
-      若启动浏览器时已错过设定时间，程序将立即尝试自动签到。
-	  <br><br>
-	  <b>🎈 如有问题，可通过 <a href="https://imneko.com" target="_blank">一只夜猫子 imnkeo.com</a> 进行反馈。</b>
+      <b>👉 开启浏览器自动补签：</b>
+      <br>若启动浏览器时已错过设定时间，程序将立即尝试自动签到。
+      <br><br>
+	    <b>🎈 如有问题，可通过 <a href="https://imneko.com" target="_blank">一只夜猫子 imneko.com</a> 进行反馈。</b>
     </div>
 
     <div style="margin: 15px 0;">
-      <label>
+      <label style="cursor: pointer;">
         <input type="checkbox" id="notifyToggle" checked> 开启桌面结果通知
       </label>
     </div>
 
     <button id="saveBtn">保存设置</button>
-    <button id="testBtn" style="color: #007bff;">手动测试签到</button>
-    
+    <button id="testBtn" style="color: #007bff; margin-left: 8px;">手动测试签到</button>
+
     <div class="history">
-      <h4>最近 30 次签到日志:</h4>
-      <ul id="historyList" style="padding-left: 20px;"></ul>
+      <h4 style="margin-top: 0;">📅 最近 30 次签到日志:</h4>
+      <ul id="historyList"></ul>
     </div>
   </div>
   <script src="options.js"></script>
