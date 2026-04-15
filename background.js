@@ -1,4 +1,4 @@
-// 当插件安装或浏览器启动时，设置一个定时器
+// 当插件安装或更新时触发
 chrome.runtime.onInstalled.addListener(() => {
   console.log("插件已安装，配置伪装规则...");
   
@@ -23,134 +23,144 @@ chrome.runtime.onInstalled.addListener(() => {
     addRules: RULES
   });
 
-  chrome.alarms.create("checkInAlarm", { periodInMinutes: 60 });
+  // 创建一个每 60 分钟触发一次的闹钟
+  console.log("插件已安装，正在设置闹钟...");
+  // 增加 delayInMinutes: 1。
+  // 安装后 1 分钟就会触发第一次闹钟，之后每 60 分钟循环一次。
+  chrome.alarms.create("checkInAlarm", { delayInMinutes: 1, periodInMinutes: 60 });
+
+  // 安装或更新完成后，立刻主动检查一次是否需要签到！
+  tryCheckIn();
 });
 
+// 监听浏览器启动事件 (Chrome 启动时触发)
+// 即使错过了闹钟，只要一打开浏览器，就会立刻检查并补签。
+chrome.runtime.onStartup.addListener(() => {
+  console.log("检测到浏览器启动，开始检查签到条件...");
+  tryCheckIn();
+});
+
+// 监听闹钟触发 (依靠闹钟补偿机制)
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "checkInAlarm") {
+    console.log("定时闹钟触发，开始检查签到条件...");
     tryCheckIn();
   }
 });
 
-// 签到逻辑函数
+// 签到逻辑函数 (自动签到的入口)
 async function tryCheckIn() {
-  // 读取重试次数和重试日期
-  const data = await chrome.storage.local.get(["notifyEnabled", "lastCheckInDate", "targetHour", "retryCount", "lastRetryDate"]);
-  
-  const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const currentHour = now.getHours();
-  const targetHour = data.targetHour || 9;
-
-  // 判断是否是新的一天，如果是，重置重试次数
-  let currentRetryCount = (data.lastRetryDate === today) ? (data.retryCount || 0) : 0;
-
-  // 判断逻辑：今天没签过，且到了时间
-  if (data.lastCheckInDate !== today && currentHour >= targetHour) {
+  try {
+    const data = await chrome.storage.local.get(["notifyEnabled", "lastCheckInDate", "targetHour"]);
     
-    // 如果今天已经重试超过 3 次，强制停止，防止死循环
-    if (currentRetryCount >= 3) {
-      console.warn("今日签到失败次数已达上限(3次)，放弃继续尝试。");
-      return; 
-    }
+    // 【修复时区Bug】获取本地时区的年月日
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`; 
+    
+    const currentHour = now.getHours();
+    const targetHour = data.targetHour !== undefined ? data.targetHour : 9;
 
-    performFetch(today, data.notifyEnabled, currentRetryCount);
+    console.log(`[状态检查] 今日:${today}, 上次自动签到:${data.lastCheckInDate}, 当前小时:${currentHour}, 目标小时:${targetHour}`);
+
+    if (data.lastCheckInDate !== today && currentHour >= targetHour) {
+      console.log("满足自动签到条件，准备发送请求...");
+      // 【关键修改】第三个参数传入 false，表示这是自动签到
+      performFetch(today, data.notifyEnabled, false);
+    } else {
+      console.log("未满足自动签到条件，继续等待。");
+    }
+  } catch (error) {
+    console.error("执行 tryCheckIn 时发生错误:", error);
   }
 }
 
 // 实际发送签到请求的函数
-function performFetch(today, notifyEnabled, currentRetryCount) {
+// 【新增参数】 isManual：默认值为 false，用来判断是否为手动点击的测试
+function performFetch(today, notifyEnabled, isManual = false) {
   fetch("https://glados.cloud/api/user/checkin", {
     method: "POST",
-    headers: { "Content-Type": "application/json;charset=UTF-8" },
+    headers: {
+      "Content-Type": "application/json;charset=UTF-8"
+    },
     credentials: 'include', 
-    body: JSON.stringify({ token: "glados.cloud" })
+    body: JSON.stringify({ 
+      token: "glados.cloud" 
+    })
   })
   .then(response => response.json())
   .then(result => {
-    console.log("服务器返回:", result);
-    let statusMsg = result.message || "未知状态";
+    // 在控制台打印，方便调试时区分
+    console.log(`[${isManual ? '手动测试' : '自动签到'}] 服务器返回完整结果:`, result);
     
-    // 转换为小写，增加容错率
-    const msgLower = statusMsg.toLowerCase();
+    let statusMsg = result.message;
+    // 在历史记录中增加前缀，方便在选项页查看时区分
+    saveHistory(`[${isManual ? '手动' : '自动'}] ` + statusMsg);
     
-    // 1. 判断是否成功或已签到 (优先依靠 code，辅以文字保底)
-    // 根据经验，code 0 通常是成功。如果将来抓包发现重复签到 code 是 1，可以改成 result.code === 0 || result.code === 1
-    const isSuccess = result.code === 0 || msgLower.includes("repeat") || msgLower.includes("tomorrow") || msgLower.includes("logged");
-    
-    // 2. 判断致命错误 (Token失效)
-    const isTokenError = result.code === -2 || msgLower.includes("token");
-
-    if (isSuccess) {
-       console.log("✅ 签到成功/已签到！");
-       saveHistory(statusMsg);
-       chrome.storage.local.set({ lastCheckInDate: today });
-       showNotification(notifyEnabled, statusMsg);
-
-    } else if (isTokenError) {
-       console.log("❌ 致命错误：Token已失效！");
-       saveHistory("❌ Token失效，请重新登录");
-       // 致命错误：假装今天已经签到了，阻断重试
-       chrome.storage.local.set({ lastCheckInDate: today }); 
-       // 给出强烈警告
-       showNotification(notifyEnabled, "⚠️ 签到失败：Token已失效，请打开浏览器重新登录 GLaDOS！");
-
+    // 【核心修改】只有在“不是手动测试”的情况下，才去更新最后签到日期
+    if (!isManual) {
+        // 防无限循环逻辑
+        const msgLower = statusMsg.toLowerCase();
+        if (result.code === 0 || msgLower.includes("checkin") || msgLower.includes("points")|| msgLower.includes("repeat") || msgLower.includes("tomorrow") || msgLower.includes("logged")) {
+           chrome.storage.local.set({ lastCheckInDate: today });
+           console.log("已更新自动签到日期标识");
+        }
     } else {
-       console.log(`⚠️ 未知服务器错误，增加重试次数 (${currentRetryCount + 1}/3)`);
-       saveHistory(`⚠️ 异常: ${statusMsg} (等待重试)`);
-       // 累加重试次数，允许下个闹钟再次尝试
-       chrome.storage.local.set({ 
-         retryCount: currentRetryCount + 1,
-         lastRetryDate: today
-       });
-       showNotification(notifyEnabled, `⚠️ 签到遇到未知情况，系统将在下小时重试。信息: ${statusMsg}`);
+        console.log("本次为手动测试，不更新自动签到日期标识");
+    }
+
+    if (notifyEnabled !== false) {
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: "icon.png",
+        // 弹窗标题也做一下区分
+        title: isManual ? "GLaDOS 手动测试结果" : "GLaDOS 自动签到结果",
+        message: statusMsg
+      });
     }
   })
   .catch(error => {
     console.error("网络请求发生错误:", error);
-    saveHistory(`网络连接失败 (等待重试 ${currentRetryCount + 1}/3)`);
-    // 网络错误也累加重试次数
-    chrome.storage.local.set({ retryCount: currentRetryCount + 1, lastRetryDate: today });
+    saveHistory(`[${isManual ? '手动' : '自动'}] 网络连接失败`);
   });
-}
-
-// 提取通知代码
-function showNotification(notifyEnabled, msg) {
-  // 如果用户开启了通知，直接触发桌面气泡
-  if (notifyEnabled !== false) {
-    chrome.notifications.create({
-      type: "basic",
-      iconUrl: "icon.png", 
-      title: "GLaDOS 签到结果",
-      message: msg
-    });
-  }
 }
 
 // 保存历史记录的函数
 async function saveHistory(msg) {
-  const data = await chrome.storage.local.get({ history: [] });
-  const newRecord = { time: new Date().toLocaleString(), result: msg };
-  const newHistory = [newRecord, ...data.history].slice(0, 30);
-  chrome.storage.local.set({ history: newHistory });
+  try {
+    const data = await chrome.storage.local.get({ history: [] });
+    const newRecord = {
+      time: new Date().toLocaleString(),
+      result: msg
+    };
+    // 只保留最近 30 条记录
+    const newHistory = [newRecord, ...data.history].slice(0, 30);
+    chrome.storage.local.set({ history: newHistory });
+  } catch (error) {
+    console.error("保存历史记录失败:", error);
+  }
 }
 
-// 监听来自设置页面的消息
+// 监听来自设置页面的消息 (手动签到的入口)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "forceCheckIn") {
-    console.log("收到强制测试指令");
-    const today = new Date().toISOString().split('T')[0];
+    console.log("收到强制签到指令");
+    // 手动签到也统一使用本地时间
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
-    // 测试时，不传递重试次数，强制认为它是 0，确保测试总能发出去
     chrome.storage.local.get(["notifyEnabled"], (data) => {
-      performFetch(today, data.notifyEnabled, 0);
+      // 【关键修改】第三个参数传入 true，明确告诉 performFetch 这是手动操作
+      performFetch(today, data.notifyEnabled, true);
     });
     sendResponse({ status: "processing" });
   }
   return true; 
 });
 
-// 监听浏览器图标点击事件
+// 监听插件图标点击事件
 chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
 });
