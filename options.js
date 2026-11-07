@@ -37,12 +37,19 @@ document.getElementById('saveBtn').addEventListener('click', () => {
   });
 });
 
-// 立即测试按钮的逻辑
-document.getElementById('testBtn').addEventListener('click', () => {
-  // 发送消息给后台脚本 background.js，让它立刻执行签到
-  chrome.runtime.sendMessage({ action: "forceCheckIn" }, (response) => {
-    alert("测试指令已发送，请检查下方历史记录或系统通知。");
-    // 刷新一下页面看历史记录
-    setTimeout(() => location.reload(), 2000);
-  });
+// 等待完整挑战和签到结果，不再固定两秒后刷新。
+document.getElementById('testBtn').addEventListener('click', async () => {
+  const button = document.getElementById('testBtn');
+  button.disabled = true;
+  button.textContent = '正在完成挑战并签到…';
+  try {
+    const result = await chrome.runtime.sendMessage({ action: 'forceCheckIn' });
+    alert(result?.message || '未收到签到结果，请查看历史记录。');
+    location.reload();
+  } catch (error) {
+    alert('无法执行签到：' + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = '手动测试签到';
+  }
 });
