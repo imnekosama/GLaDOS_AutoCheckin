@@ -15,8 +15,8 @@
     .card { 
       border: 2px solid #efdcff; 
       padding: 30px; 
-      border-radius: 12px; /* 让卡片外层也稍微圆润一点，与内部呼应 */
-      max-width: 650px; /* 宽度从 450px 增加到 650px，减少日志换行 */
+      border-radius: 12px; 
+      max-width: 650px; 
       background-color: #c4bdff; 
       box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
       margin: 40px auto; 
@@ -27,8 +27,8 @@
       font-size: 14px; 
       color: #272727; 
       background: #f9f9f9; 
-      padding: 15px; /* 稍微增加一点内边距，让文字不那么贴边 */
-      border-radius: 12px; /* 从 4px 改为 12px，边缘更加圆润柔和 */
+      padding: 15px; 
+      border-radius: 12px; 
       margin: 15px 0; 
     }
 
@@ -43,25 +43,153 @@
     a:hover {
       color: #0f76eb;
       text-decoration: underline;
-      /* font-weight: bold; */
       text-shadow: 1px 1px 1px #94c6ff;
     }
     a:active {
       color: #d3084b;
     }
     
-    .history { margin-top: 20px; font-size: 0.9em; border-top: 1px solid #dcc7f7; padding-top: 15px; }
-    #historyList { padding-left: 20px; line-height: 1.8; color: #2c3e50; }
-    input[type="number"] { width: 60px; padding: 4px; }
-    button { cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; background: #fff; transition: all 0.2s; } /* 给按钮加了一点动画过渡，提升质感 */
-    #saveBtn { background: #28a745; color: white; border: none; }
+    /* 按钮样式与过渡效果 */
+    button { 
+      cursor: pointer; 
+      padding: 7px 14px; 
+      border-radius: 6px; 
+      border: 1px solid #ccc; 
+      background: #fff; 
+      font-size: 14px;
+      transition: all 0.2s; 
+    }
+    #saveBtn { background: #28a745; color: white; border: none; font-weight: 500; }
     #saveBtn:hover { background: #218838; }
-    #testBtn:hover { background: #f0f8ff; } /* 鼠标悬停在测试按钮上的小效果 */
+    #testBtn { color: #007bff; margin-left: 8px; font-weight: 500; }
+    #testBtn:hover:not(:disabled) { background: #f0f8ff; }
+    #testBtn:disabled { 
+      background: #e9ecef; 
+      color: #6c757d; 
+      border-color: #ced4da; 
+      cursor: not-allowed; 
+    }
+
+    /* ==========================================
+       服务器状态与 30 天签到日历面板样式
+       ========================================== */
+    .server-section {
+      margin-top: 22px;
+      border-top: 1px solid #dcc7f7;
+      padding-top: 18px;
+    }
+    .server-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .server-header h4 {
+      margin: 0;
+      font-size: 1em;
+      color: #1a1a1a;
+    }
+    .stats-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .stat-badge {
+      background: #f9f9f9;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 13px;
+      color: #333;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .stat-badge b {
+      color: #0f76eb;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    /* 日历外框容器 */
+    .calendar-box {
+      background: #f9f9f9;
+      padding: 14px;
+      border-radius: 12px;
+    }
+    /* 6列 x 5行 网格布局，展示 30 天数据 */
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    /* 单个日期格子 */
+    .cal-day {
+      background: #eeeeee;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 6px 4px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 46px;
+      transition: transform 0.15s ease;
+    }
+    .cal-day:hover {
+      transform: translateY(-2px);
+    }
+    /* 已签到的格子（清新绿） */
+    .cal-day.checked {
+      background: #d4edda;
+      border-color: #9fd3ab;
+    }
+    /* 今天的格子增加紫色外框高亮 */
+    .cal-day.today {
+      box-shadow: 0 0 0 2px #6f42c1;
+    }
+    .cal-date {
+      font-size: 11px;
+      color: #666;
+      line-height: 1.2;
+    }
+    .cal-pts {
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 3px;
+      line-height: 1.2;
+      color: #aaa;
+    }
+    .cal-day.checked .cal-pts {
+      color: #155724;
+    }
+    .calendar-legend {
+      display: flex;
+      justify-content: flex-end;
+      gap: 15px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #555;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    /* 本地日志区域 */
+    .history { margin-top: 20px; font-size: 0.9em; border-top: 1px solid #dcc7f7; padding-top: 15px; }
+    #historyList { padding-left: 20px; line-height: 1.8; color: #2c3e50; margin-bottom: 0; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h3>GLaDOS 自动签到设置 (v1.4)</h3>
+    <h3>GLaDOS 自动签到设置 (v1.5)</h3>
     
     <div>
       <label for="targetHour">⏰ 设定签到时间： </label>
@@ -96,16 +224,14 @@
     <div class="info-text">
       <p style="margin-top:0;"><b>💡 运行机制说明：</b></p>
       <p style="margin-top:0;"><b>💡 确保当前浏览器已登录 <a href="https://glados.cloud/console/checkin" target="_blank" rel="noreferrer">https://glados.cloud</a></b></p>
-      <b>👉 浏览器持续开启时：</b><br>
-      模拟现实操作，签到将在设定时间的 60 分钟内随机触发。
-      <br>例如：设定 9 点，程序会在 9:00~9:59 之间的随机时间执行。
-      <br><br>注：如果电脑资源充沛且负载较低，程序会倾向于按精确周期触发。
-      <br>可以尝试取消“关闭浏览器后运行后台应用”来增加随机触发。
+      <b>👉 浏览器持续开启时（全随机拟人模式）：</b><br>
+      到达设定小时后，插件会自动摇号生成随机的“几分几秒”执行签到，并在签到前模拟真人浏览停留 3.5~7.5 秒。
+      <br>例如：设定 9 点，程序每天会在 9:01~9:55 之间完全不同的分钟和秒数触发。
       <br><br>
       <b>👉 开启浏览器自动补签：</b>
-      <br>若启动浏览器时已错过设定时间，程序将立即尝试自动签到。
+      <br>若启动浏览器时已超过设定小时，程序将在网络稳定后（约 5~20 秒）立即自动补签。
       <br><br>
-	    <b>🎈 如有问题，可通过 <a href="https://imneko.com" target="_blank">一只夜猫子 imneko.com</a> 进行反馈。</b>
+      <b>🎈 如有问题，可通过 <a href="https://imneko.com" target="_blank">一只夜猫子 imneko.com</a> 进行反馈。</b>
     </div>
 
     <div style="margin: 15px 0;">
@@ -115,10 +241,34 @@
     </div>
 
     <button id="saveBtn">保存设置</button>
-    <button id="testBtn" style="color: #007bff; margin-left: 8px;">手动测试签到</button>
+    <button id="testBtn">手动测试签到</button>
 
+    <!-- 服务器积分与最近 30 天签到日历模块 -->
+    <div class="server-section">
+      <div class="server-header">
+        <h4>📊 服务器最近 30 天签到日历:</h4>
+        <div class="stats-badges">
+          <span class="stat-badge">💎 当前积分: <b id="serverPoints">读取中...</b></span>
+          <span class="stat-badge">🔥 连续签到: <b id="serverStreak">-</b> 天</span>
+        </div>
+      </div>
+      <div class="calendar-box">
+        <div id="calendarStatus" style="text-align: center; font-size: 13px; color: #666; padding: 10px 0;">
+          正在从 GLaDOS 服务器同步积分与日历数据...
+        </div>
+        <div id="calendarGrid" class="calendar-grid" style="display: none;"></div>
+        <!-- 增加了 id="calendarLegend"，方便未登录时隐藏图例 -->
+        <div id="calendarLegend" class="calendar-legend">
+          <span class="legend-item"><span class="legend-dot" style="background: #d4edda; border: 1px solid #9fd3ab;"></span>已签到 (+点数)</span>
+          <span class="legend-item"><span class="legend-dot" style="background: #eeeeee; border: 1px solid #e0e0e0;"></span>未签到</span>
+          <span class="legend-item"><span class="legend-dot" style="border: 2px solid #6f42c1; width: 10px; height: 10px;"></span>今日</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 本地历史日志 -->
     <div class="history">
-      <h4 style="margin-top: 0;">📅 最近 30 次签到日志:</h4>
+      <h4 style="margin-top: 0;">📅 本地最近 30 次签到日志:</h4>
       <ul id="historyList"></ul>
     </div>
   </div>
