@@ -133,23 +133,20 @@ async function loadServerCalendarData() {
     streakEl.textContent = data.streak !== undefined ? data.streak : 0;
 
     // 2. 整理服务器返回的 history 流水，筛选出所有签到记录
-    // 用一个字典对象 checkinMap 保存每天获得的点数，格式如：{ "2026-11-08": 13 }
     const checkinMap = {};
     const historyList = data.history || [];
 
     historyList.forEach(item => {
-      // 官方源码逻辑：只要 business 字段包含 "checkin"，就代表这是一条每日签到记录
       if (item.business && item.business.indexOf("checkin") !== -1) {
         const recordDate = new Date(Number(item.time));
         const dateKey = `${recordDate.getFullYear()}-${recordDate.getMonth() + 1}-${recordDate.getDate()}`;
         const pointsChange = parseInt(item.change, 10) || 0;
-        // 将该日期的签到点数存入字典
         checkinMap[dateKey] = pointsChange;
       }
     });
 
     // 3. 生成最近 30 天（从 29 天前到今天）的日历小方格
-    gridEl.innerHTML = ''; // 清空网格容器
+    gridEl.innerHTML = '';
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
 
@@ -171,12 +168,12 @@ async function loadServerCalendarData() {
       cell.className = 'cal-day' + (isChecked ? ' checked' : '') + (isToday ? ' today' : '');
       cell.title = `${year}年${month}月${day}日：` + (isChecked ? `已签到 (+${earnedPoints}点)` : '未签到');
 
-      // 格子上方的日期文字（如 "11/8" 或 "今日(11/8)"）
+      // 格子上方的日期文字
       const dateSpan = document.createElement('span');
       dateSpan.className = 'cal-date';
       dateSpan.textContent = isToday ? `今日(${month}/${day})` : `${month}/${day}`;
 
-      // 格子下方的点数文字（如 "+12pt" 或 "-"）
+      // 格子下方的点数文字
       const ptsSpan = document.createElement('span');
       ptsSpan.className = 'cal-pts';
       ptsSpan.textContent = isChecked ? `+${earnedPoints}pt` : '-';
@@ -220,7 +217,7 @@ document.getElementById('saveBtn').addEventListener('click', () => {
 });
 
 // ============================================================================
-// 手动测试按钮逻辑（带 9 秒动态倒计时反馈）
+// 手动测试按钮逻辑（带 12 秒动态倒计时反馈）
 // ============================================================================
 document.getElementById('testBtn').addEventListener('click', () => {
   const testBtn = document.getElementById('testBtn');
@@ -230,8 +227,8 @@ document.getElementById('testBtn').addEventListener('click', () => {
 
   // 2. 向后台脚本发送手动签到指令
   chrome.runtime.sendMessage({ action: "forceCheckIn" }, () => {
-    // 因为后台会模拟人类随机停顿 3.5 ~ 7.5 秒，所以设置 9 秒倒计时刚好覆盖全流程
-    let remainingSeconds = 9;
+    // 后台会静默打开页面加载 + 模拟真人观察(4.5~6.5秒) + 点击官方按钮等待响应，设置 12 秒倒计时确保全流程跑完
+    let remainingSeconds = 12;
     testBtn.textContent = `⏳ 正在模拟真人操作 (${remainingSeconds}s)...`;
 
     const countdownTimer = setInterval(() => {

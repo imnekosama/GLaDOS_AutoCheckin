@@ -189,7 +189,7 @@
 </head>
 <body>
   <div class="card">
-    <h3>GLaDOS 自动签到设置 (v1.5)</h3>
+    <h3>GLaDOS 自动签到设置 (v1.5.1)</h3>
     
     <div>
       <label for="targetHour">⏰ 设定签到时间： </label>
@@ -224,8 +224,8 @@
     <div class="info-text">
       <p style="margin-top:0;"><b>💡 运行机制说明：</b></p>
       <p style="margin-top:0;"><b>💡 确保当前浏览器已登录 <a href="https://glados.cloud/console/checkin" target="_blank" rel="noreferrer">https://glados.cloud</a></b></p>
-      <b>👉 浏览器持续开启时（全随机拟人模式）：</b><br>
-      到达设定小时后，插件会自动摇号生成随机的“几分几秒”执行签到，并在签到前模拟真人浏览停留 3.5~7.5 秒。
+      <b>👉 浏览器持续开启时（全随机真实网页模式）：</b><br>
+      到达设定小时后，插件会自动摇号生成随机的“几分几秒”，在后台静默加载官方签到页（不弹窗打扰），模拟真人停留数秒后直接触发页面原生签到按钮并自动关闭页面。
       <br>例如：设定 9 点，程序每天会在 9:01~9:55 之间完全不同的分钟和秒数触发。
       <br><br>
       <b>👉 开启浏览器自动补签：</b>
@@ -257,7 +257,6 @@
           正在从 GLaDOS 服务器同步积分与日历数据...
         </div>
         <div id="calendarGrid" class="calendar-grid" style="display: none;"></div>
-        <!-- 增加了 id="calendarLegend"，方便未登录时隐藏图例 -->
         <div id="calendarLegend" class="calendar-legend">
           <span class="legend-item"><span class="legend-dot" style="background: #d4edda; border: 1px solid #9fd3ab;"></span>已签到 (+点数)</span>
           <span class="legend-item"><span class="legend-dot" style="background: #eeeeee; border: 1px solid #e0e0e0;"></span>未签到</span>

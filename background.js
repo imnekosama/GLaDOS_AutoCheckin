@@ -1,6 +1,6 @@
 // ============================================================================
 // 文件名：background.js
-// 作用：插件的后台常驻服务脚本（Service Worker），负责定时闹钟、随机时间调度和拟人化签到
+// 作用：插件的后台常驻服务脚本（Service Worker），负责定时闹钟、随机时间调度和原生网页点击签到
 // ============================================================================
 
 // 【辅助工具 1】延时等待函数（模拟人类停顿思考）
@@ -9,7 +9,7 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 【辅助工具 2】获取本地时区的今日日期字符串（格式如："2026-11-08"）
+// 【辅助工具 2】获取本地时区的今日日期字符串（格式如："2026-11-13"）
 function getTodayString() {
   const now = new Date();
   const year = now.getFullYear();
@@ -20,7 +20,7 @@ function getTodayString() {
 }
 
 // 【核心安全配置】确保请求头伪装规则始终生效的函数
-// 作用：给插件发出的所有 /api/user/ 请求自动加上官网的 Origin 和 Referer，防止被识别为无头脚本
+// 作用：给插件发出的所有 /api/user/ 请求自动加上官网的 Origin 和 Referer
 async function ensureHeaderRules() {
   try {
     const RULES = [{
@@ -34,7 +34,7 @@ async function ensureHeaderRules() {
         ]
       },
       condition: {
-        // 拦截所有 glados.cloud/api/user/ 下的接口（包含 checkin、challenge、points、iqi 等）
+        // 拦截所有 glados.cloud/api/user/ 下的接口（包含设置页拉取日历数据的 points 接口等）
         urlFilter: 'glados.cloud/api/user/',
         resourceTypes: ['xmlhttprequest', 'other']
       }
@@ -47,30 +47,6 @@ async function ensureHeaderRules() {
     console.log("[安全伪装] 请求头伪装规则已确认生效。");
   } catch (error) {
     console.error("[安全伪装] 配置伪装规则时发生错误:", error);
-  }
-}
-
-// 【核心加密函数】计算 GLaDOS 官方防伪签名 (checkinProof)
-// 原理：还原官网 630 模块，将服务器发来的随机码 nonce 与固定盐值拼接后计算 SHA-256 哈希
-async function calculateCheckinProof(nonce) {
-  try {
-    // 官网源码中用 ASCII 数字隐藏的固定暗号
-    const secretSalt = "glados-observe-v1";
-    // 按照官网要求，使用英文句号拼接
-    const rawText = `${nonce}.${secretSalt}`;
-
-    // 使用浏览器原生的加密接口计算 SHA-256
-    const msgBuffer = new TextEncoder().encode(rawText);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-
-    // 将计算出的二进制字节流转换为 64 位十六进制字符串
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const proofHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-    return proofHex;
-  } catch (error) {
-    console.error("[加密计算] 计算防伪签名 proof 时出错:", error);
-    return "";
   }
 }
 
@@ -111,8 +87,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     const today = getTodayString();
 
     if (data.lastCheckInDate !== today) {
-      // 再额外加入 1 ~ 25 秒的随机秒级停顿，让触发的“秒数”也完全随机
-      const randomSecondsMs = Math.floor(Math.random() * 25000) + 1000;
+      // 再额外加入 1 ~ 20 秒的随机秒级停顿，让触发的“秒数”也完全随机
+      const randomSecondsMs = Math.floor(Math.random() * 20000) + 1000;
       console.log(`额外等待 ${(randomSecondsMs / 1000).toFixed(1)} 秒以打乱秒级规律...`);
       await sleep(randomSecondsMs);
 
@@ -158,10 +134,9 @@ async function tryCheckIn() {
       return;
     }
 
-    // 【区分“准点随机触发”与“晚开电脑补签”】
+    // 区分“准点随机触发”与“晚开电脑补签”
     if (currentHour === targetHour) {
-      // 正好处于设定的那个小时内（比如设定 9 点，现在是 9 点多）
-      // 检查是否已经安排了随机延迟闹钟
+      // 正好处于设定的那个小时内，检查是否已经安排了随机延迟闹钟
       const existingAlarm = await chrome.alarms.get("randomDelayAlarm");
       if (existingAlarm) {
         const triggerTime = new Date(existingAlarm.scheduledTime).toLocaleTimeString();
@@ -195,102 +170,239 @@ async function tryCheckIn() {
 }
 
 // ============================================================================
-// 核心拟人化签到请求函数
+// 【终极破局引擎】在真实官网主环境（MAIN World）中直接触发官方原生签到按钮
+// 原理：不再自己伪造 fetch 请求，而是直接点击网页上的 .ckb 签到按钮，由官网原版代码完成全部校验！
 // ============================================================================
+async function executeInRealWebPage(modeText) {
+  let tempTabId = null;
+  try {
+    console.log(`[${modeText}] 正在后台打开官网签到页，准备触发官方原生签到按钮...`);
 
-// 参数说明：
-// today: 今日日期字符串
-// notifyEnabled: 是否开启桌面通知
-// isManual: 是否为手动点击测试（默认 false）
+    // 1. 创建官网签到标签页（active: false 静默打开，不抢占用户焦点）
+    const tab = await chrome.tabs.create({
+      url: "https://glados.cloud/console/checkin",
+      active: false
+    });
+    tempTabId = tab.id;
+
+    // 2. 轮询等待页面彻底加载完成（监听 tab status 变为 complete，最多等 10 秒）
+    for (let i = 0; i < 20; i++) {
+      await sleep(500);
+      try {
+        const currentTab = await chrome.tabs.get(tempTabId);
+        if (currentTab && currentTab.status === "complete") {
+          break;
+        }
+      } catch (e) {
+        break;
+      }
+    }
+
+    // 3. 页面加载完成后，先注入一段“可见性伪装与结果旁听器”到网页主世界 (world: "MAIN")
+    // 作用：① 欺骗 Cloudflare 说当前标签页处于激活可见状态；② 旁听官网原版代码发出的 /api/user/checkin 响应
+    await chrome.scripting.executeScript({
+      target: { tabId: tempTabId },
+      world: "MAIN", // 【核心关键】必须运行在网页主世界，与官网 React 和 Cloudflare 脚本同处一室
+      func: () => {
+        try {
+          // 伪装页面可见性，防止后台标签页被 Cloudflare Turnstile 判定为挂机隐藏页
+          Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+          Object.defineProperty(document, 'hidden', { get: () => false, configurable: true });
+          document.dispatchEvent(new Event('visibilitychange'));
+        } catch (e) {}
+
+        // 初始化一个全局变量，用来存放一会儿官网自己签到后收到的服务器结果
+        window.__gladosCheckinResult = null;
+
+        // 挂载原生 XMLHttpRequest 和 fetch 旁听器（官网 Axios 底层走 XMLHttpRequest，双保险旁听）
+        if (!window.__gladosHooked) {
+          window.__gladosHooked = true;
+
+          // 旁听 XMLHttpRequest
+          const rawOpen = XMLHttpRequest.prototype.open;
+          const rawSend = XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+            this._requestUrl = url;
+            return rawOpen.call(this, method, url, ...rest);
+          };
+          XMLHttpRequest.prototype.send = function(...args) {
+            this.addEventListener('load', function() {
+              try {
+                // 当检测到官网自己的代码完成了 /user/checkin 请求时，把结果抄录下来
+                if (this._requestUrl && this._requestUrl.includes('/user/checkin') && !this._requestUrl.includes('/challenge')) {
+                  window.__gladosCheckinResult = JSON.parse(this.responseText);
+                }
+              } catch (e) {}
+            });
+            return rawSend.apply(this, args);
+          };
+
+          // 旁听原生 fetch（以防官网将来从 Axios 切换到 fetch）
+          const rawFetch = window.fetch;
+          window.fetch = async function(...args) {
+            const response = await rawFetch.apply(this, args);
+            try {
+              const reqUrl = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+              if (reqUrl.includes('/user/checkin') && !reqUrl.includes('/challenge')) {
+                const clone = response.clone();
+                clone.json().then(data => {
+                  window.__gladosCheckinResult = data;
+                }).catch(() => {});
+              }
+            } catch (e) {}
+            return response;
+          };
+        }
+      }
+    });
+
+    // 4. 模拟真人在页面上自然停留 4.5 ~ 6.5 秒
+    // 这段时间极其重要：官网页面会自动请求 points、iqi、challenge，且稳稳凑够官方要求的 2.5 秒以上停留时间！
+    const humanWaitMs = Math.floor(Math.random() * 2000) + 4500;
+    console.log(`[${modeText}] 页面已就绪，正在模拟真人观察页面 ${(humanWaitMs / 1000).toFixed(1)} 秒...`);
+    await sleep(humanWaitMs);
+
+    // 5. 在网页主世界中寻找官方的签到按钮（button.ckb）并直接模拟真实鼠标点击！
+    const clickResult = await chrome.scripting.executeScript({
+      target: { tabId: tempTabId },
+      world: "MAIN",
+      func: async () => {
+        const sleepInPage = (ms) => new Promise(r => setTimeout(r, ms));
+
+        // 检查是否被重定向到了登录页
+        if (window.location.pathname.includes('login') || window.location.pathname.includes('authenticate')) {
+          return { notLoggedIn: true };
+        }
+
+        // 寻找官网签到按钮（官网源码中签到按钮的 class 固定为 "ckb"）
+        let checkinBtn = document.querySelector('button.ckb');
+        // 如果页面渲染稍微慢了一点，再最多等 3 秒找一下按钮
+        for (let w = 0; w < 6 && !checkinBtn; w++) {
+          await sleepInPage(500);
+          checkinBtn = document.querySelector('button.ckb');
+        }
+
+        if (!checkinBtn) {
+          return { buttonNotFound: true };
+        }
+
+        // 如果按钮上已经有 "is-done" 类名，或者处于 disabled 状态，说明今天已经签过到了
+        if (checkinBtn.classList.contains('is-done') || checkinBtn.disabled) {
+          return {
+            success: true,
+            data: { code: 1, message: "Checkin Repeats! Please Try Tomorrow (今日已签到)" }
+          };
+        }
+
+        // 触发完整的鼠标移动、按下、抬起和点击事件链（模拟 100% 真实的物理鼠标点击）
+        const mouseEvents = ['mouseover', 'mouseenter', 'mousedown', 'mouseup', 'click'];
+        mouseEvents.forEach(eventType => {
+          const evt = new MouseEvent(eventType, {
+            bubbles: true,
+            cancelable: true,
+            view: window
+          });
+          checkinBtn.dispatchEvent(evt);
+        });
+
+        // 点击按钮后，等待官网自己的代码把请求发出去并收到结果（最多轮询等待 8 秒）
+        for (let i = 0; i < 16; i++) {
+          await sleepInPage(500);
+          if (window.__gladosCheckinResult) {
+            return { success: true, data: window.__gladosCheckinResult };
+          }
+          // 如果按钮变成了 is-done 完成状态，也可以直接读取按钮上的文字作为保底结果
+          if (checkinBtn.classList.contains('is-done')) {
+            return {
+              success: true,
+              data: { code: 0, message: checkinBtn.innerText.trim() || "CheckIn! Get Points" }
+            };
+          }
+        }
+
+        return { success: false, error: "点击签到按钮后等待服务器响应超时" };
+      }
+    });
+
+    if (clickResult && clickResult[0] && clickResult[0].result) {
+      return clickResult[0].result;
+    }
+    return null;
+
+  } catch (error) {
+    console.error(`[${modeText}] 网页原生点击签到执行出错:`, error);
+    return null;
+  } finally {
+    // 6. 签到完成后，再稍微停留 1 秒确保数据入库，然后自动关闭临时标签页
+    await sleep(1000);
+    if (tempTabId !== null) {
+      try {
+        await chrome.tabs.remove(tempTabId);
+        console.log(`[${modeText}] 已自动清理并关闭临时签到标签页。`);
+      } catch (closeErr) {}
+    }
+  }
+}
+
+// ============================================================================
+// 主签到入口函数
+// ============================================================================
 async function performFetch(today, notifyEnabled, isManual = false) {
   const modeText = isManual ? '手动测试' : '自动签到';
 
   try {
     await ensureHeaderRules();
-    console.log(`[${modeText}] 第 1 步：模拟真人打开网页，同步加载面板数据与防伪题目...`);
+    console.log(`[${modeText}] 开始执行真实网页原生点击签到流程...`);
 
-    // 模拟真实浏览器打开 /console/checkin 页面时同时发出的 4 个请求
-    // 使用 .catch(() => null) 确保即便前三个辅助请求偶发超时，也不会影响第 4 个核心 challenge 请求
-    const [pointsRes, iqiRes, trendRes, challengeRes] = await Promise.all([
-      fetch("https://glados.cloud/api/user/points", { method: "GET", credentials: "include" }).catch(() => null),
-      fetch("https://glados.cloud/api/user/iqi", { method: "GET", credentials: "include" }).catch(() => null),
-      fetch("https://glados.cloud/api/user/points/trend?days=30", { method: "GET", credentials: "include" }).catch(() => null),
-      fetch("https://glados.cloud/api/user/checkin/challenge", {
+    // 调用上面的真实网页原生点击引擎
+    const pageResult = await executeInRealWebPage(modeText);
+
+    // 情况 1：明确检测到未登录官网
+    if (pageResult && pageResult.notLoggedIn) {
+      await handleNotLoggedIn(modeText, notifyEnabled, isManual);
+      return;
+    }
+
+    // 情况 2：没找到按钮或超时（先通过 /api/user/points 确认是不是因为未登录导致的）
+    if (!pageResult || pageResult.buttonNotFound || !pageResult.success) {
+      const checkLoginRes = await fetch("https://glados.cloud/api/user/points", {
         method: "GET",
-        headers: { "Accept": "application/json, text/plain, */*" },
         credentials: "include"
-      })
-    ]);
+      }).catch(() => null);
 
-    // 【未登录防御检查 1】如果 HTTP 状态码为 401/403 或发生重定向，判定为未登录
-    if (challengeRes.status === 401 || challengeRes.status === 403 || challengeRes.redirected) {
-      await handleNotLoggedIn(modeText, notifyEnabled, isManual);
+      if (checkLoginRes) {
+        if (checkLoginRes.status === 401 || checkLoginRes.status === 403 || checkLoginRes.redirected) {
+          await handleNotLoggedIn(modeText, notifyEnabled, isManual);
+          return;
+        }
+        const loginData = await checkLoginRes.json().catch(() => null);
+        if (!loginData || loginData.code !== 0) {
+          await handleNotLoggedIn(modeText, notifyEnabled, isManual);
+          return;
+        }
+      }
+
+      const failMsg = (pageResult && pageResult.error) ? pageResult.error : "页面加载超时或未找到签到按钮，请稍后重试";
+      await saveHistory(`[${isManual ? '手动' : '自动'}] ⚠️ ${failMsg}`);
+      if (notifyEnabled !== false) {
+        chrome.notifications.create({
+          type: "basic",
+          iconUrl: "icon.png",
+          title: isManual ? "GLaDOS 手动测试异常" : "GLaDOS 自动签到异常",
+          message: failMsg
+        });
+      }
       return;
     }
 
-    // 【未登录防御检查 2】安全解析 JSON，如果返回的不是 JSON（比如返回了登录网页 HTML），判定为未登录
-    let challengeData = null;
-    try {
-      challengeData = await challengeRes.json();
-    } catch (parseErr) {
-      await handleNotLoggedIn(modeText, notifyEnabled, isManual);
-      return;
-    }
+    // 情况 3：成功拿到官网原生点击后的签到结果！
+    const result = pageResult.data;
+    console.log(`[${modeText}] 成功捕获官网原生签到结果:`, result);
 
-    console.log(`[${modeText}] 第 2 步：成功获取到 challenge 响应:`, challengeData);
-
-    // 【未登录防御检查 3】如果服务器返回的业务状态码 code 不为 0（例如 -2 没有权限），说明尚未登录官网
-    if (!challengeData || challengeData.code !== 0) {
-      await handleNotLoggedIn(modeText, notifyEnabled, isManual);
-      return;
-    }
-
-    // 准备最终要提交给签到接口的数据包
-    const checkinPayload = {
-      token: "glados.cloud"
-    };
-
-    // 如果成功获取到一次性随机码 nonce，执行拟人停顿并计算加密证明 proof
-    if (challengeData.nonce) {
-      // 生成 3500 毫秒 ~ 7500 毫秒（3.5 秒 ~ 7.5 秒）之间的随机阅读停顿
-      // 既能稳稳跨过官方 2.5 秒的防脚本陷阱，每次停顿时长又完全不同
-      const randomWaitMs = Math.floor(Math.random() * (7500 - 3500 + 1)) + 3500;
-      console.log(`[${modeText}] 第 3 步：模拟人类看页面找按钮，随机停顿 ${(randomWaitMs / 1000).toFixed(2)} 秒...`);
-      await sleep(randomWaitMs);
-
-      // 计算 SHA-256 防伪签名
-      const proof = await calculateCheckinProof(challengeData.nonce);
-      console.log(`[${modeText}] 第 4 步：防伪签名计算完毕，proof:`, proof);
-
-      checkinPayload.nonce = challengeData.nonce;
-      checkinPayload.proof = proof;
-    } else {
-      console.warn(`[${modeText}] 未能获取到有效 nonce，等待 3.5 秒后尝试基础签到...`);
-      await sleep(3500);
-    }
-
-    console.log(`[${modeText}] 第 5 步：模拟点击签到按钮，正在提交数据:`, checkinPayload);
-
-    // 发送正式的 POST 签到请求
-    const checkinResponse = await fetch("https://glados.cloud/api/user/checkin", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json;charset=UTF-8",
-        "Accept": "application/json, text/plain, */*"
-      },
-      credentials: "include",
-      body: JSON.stringify(checkinPayload)
-    });
-
-    const result = await checkinResponse.json();
-    console.log(`[${modeText}] 第 6 步：服务器返回最终签到结果:`, result);
-
-    // 提取状态消息，如果有 points 字段则一并显示在日志里，方便查看本次拿了多少分
-    let statusMsg = result.message || "未知返回状态";
-    if (result.points !== undefined && Number(result.points) > 0) {
+    let statusMsg = (result && result.message) ? result.message : "签到完成";
+    if (result && result.points !== undefined && Number(result.points) > 0) {
       statusMsg += ` (本次获得: +${Number(result.points)} 点)`;
-    } else if (result.list && result.list.length > 0 && result.code === 0) {
-      // 如果 points 字段没直接给，尝试从返回的最新流水第 0 项里读取变动点数
+    } else if (result && result.list && result.list.length > 0 && result.code === 0) {
       const latestChange = parseInt(result.list[0].change, 10);
       if (!isNaN(latestChange) && latestChange > 0) {
         statusMsg += ` (本次获得: +${latestChange} 点)`;
@@ -300,16 +412,19 @@ async function performFetch(today, notifyEnabled, isManual = false) {
     // 保存到本地历史记录
     await saveHistory(`[${isManual ? '手动' : '自动'}] ` + statusMsg);
 
-    // 只有在“不是手动测试”的情况下，才更新最后签到日期标识
-    if (!isManual) {
+    // 只有在“不是手动测试”的情况下，且没有报 cloudflare 错误时，才更新今日已签到标识
+    if (!isManual && result) {
       const msgLower = statusMsg.toLowerCase();
       if (
-        result.code === 0 || 
-        msgLower.includes("checkin") || 
-        msgLower.includes("points") || 
-        msgLower.includes("repeat") || 
-        msgLower.includes("tomorrow") || 
-        msgLower.includes("logged")
+        !msgLower.includes("cloudflare") && (
+          result.code === 0 || 
+          msgLower.includes("checkin") || 
+          msgLower.includes("points") || 
+          msgLower.includes("repeat") || 
+          msgLower.includes("tomorrow") || 
+          msgLower.includes("logged") ||
+          msgLower.includes("已签到")
+        )
       ) {
         await chrome.storage.local.set({ lastCheckInDate: today });
         console.log("[状态更新] 已成功记录今日自动签到日期标识:", today);
@@ -329,12 +444,12 @@ async function performFetch(today, notifyEnabled, isManual = false) {
     }
 
   } catch (error) {
-    console.error(`[${modeText}] 网络请求或处理过程发生错误:`, error);
+    console.error(`[${modeText}] 签到过程发生错误:`, error);
     await saveHistory(`[${isManual ? '手动' : '自动'}] 网络连接或解析失败`);
   }
 }
 
-// 【新增辅助函数】统一处理后台检测到未登录官网时的日志记录与通知提醒
+// 统一处理后台检测到未登录官网时的日志记录与通知提醒
 async function handleNotLoggedIn(modeText, notifyEnabled, isManual) {
   const notLoginMsg = "签到失败：检测到当前浏览器未登录 GLaDOS 官网，请先前往官网登录账号！";
   console.warn(`[${modeText}] ${notLoginMsg}`);
